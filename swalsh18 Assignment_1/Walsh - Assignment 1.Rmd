@@ -1,0 +1,90 @@
+---
+title: "Walsh - Assignment 1"
+author: "Sharon Walsh"
+date: "2024-01-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Walsh Assignment 1
+
+This dataset was downloaded from Kaggle.com. This data is called "QS World Ranked Universities (2018-2022). The link is as follows: https://www.kaggle.com/datasets/aklimarimi/qs-world-ranked-universities-20182022
+
+
+
+```{r}
+#install.packages("caret")
+library(caret)
+#install.packages("ISLR")
+library(ISLR)
+setwd("C:/Users/sharo/OneDrive/Documents/ML 2024/Assignment 1")
+DF<-read.csv("Walsh Data - Assignment 1.csv")
+summary(DF)
+```
+
+## Descriptive Statistics 
+
+## Quantitative variables
+
+```{r}
+cat("The mean of Rank is", mean(DF$Rank))
+```
+
+```{r}
+cat("The median of Rank is", median(DF$Rank))
+```
+
+```{r}
+cat("The IQR of Rank is", print(IQR(DF$Rank)))
+```
+```{r}
+cat("The standard deviation of Rank is", print(sd(DF$Rank)))
+```
+
+```{r}
+cat("The correlation between Rank and Year is", cor(DF$Rank, DF$Year))
+```
+##Descriptive Statistics
+
+## Categorical Variables
+
+```{r}
+library(dplyr)
+DF%>%group_by(Country)%>%summarise(City=n())%>%as.data.frame()
+```
+
+
+```{r}
+Table1 <- table(DF$City)
+head(Table1)
+```
+##Transform 1 variable
+
+## Transform Variable
+
+```{r}
+Table2 <- as.character(DF$Year)
+head(Table2)
+```
+##Plot 1 quantitative variable
+
+```{r}
+head(DF)
+hist(DF$Point)
+```
+
+This historgram show that the "Point" data follows a normal distribution. 
+
+##1 scatterplot
+
+```{r}
+plot(DF$Rank)
+```
+```{r}
+library(ggplot2)
+ggplot(DF, aes(x=Point, y=Rank))+geom_point()
+```
+
