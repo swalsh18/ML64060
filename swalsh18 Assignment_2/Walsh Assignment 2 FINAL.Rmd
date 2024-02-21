@@ -1,0 +1,660 @@
+---
+title: "Walsh Assignment 2"
+author: "Sharon Walsh"
+date: "2024-02-15"
+output: html_document
+---
+
+***
+### Problem Statement: 
+
+#1. Partition the data into training (60%) and validation (40%) sets.   
+
+  +   Perform a k-NN classification with all predicors except ID and Zip code using k=1.
+  +   Transform categorical predictors with more than two categories into dummy variables first. 
+  +   Specify the success class as 1 (loan acceptance), and use the default cutoff value of 0.5
+  +   How would this customer be classified?
+
+#2. What is a choice of k that balances between overfitting and ignoring the predictor information?
+
+#3. Show the confusion matrix for the validation data that results from using the best k. 
+
+#4. Classify the customer using the best k. 
+
+#5. Repartition the data, this time into training, validation, and test sets(50% : 30% : 20%).   
+
+  +   Apply the k-NN method with the k chosen above.  
+  +   Compare the confusion matrix of the test set with that of the training and validation sets.   
+  +   Comment on the differences and their reason.   
+
+
+***
+
+### Summary 
+
+k = 2 was determined to be a choice of k that balances between overfitting and ignoring the predictor information due to its high accuracy rate and high Kappa rate. This data was imbalanced with 9.6% of the observations being labeled as the success class of 1 (loan acceptance). As such, a high Kappa was also desired when selecting k due to the imbalance of the data. 
+
+The k-NN algorithm performed the best on the Training Set, slightly worse on the Validation Set, and the worst on the Testing Set. This is to be expected. However, the k-NN algorithm did not perform significantly worse on the Testing Set so this confirms that k = 2 is appropriate for optimizing the hyper-parameter. 
+
+For the Testing Set the final metrics were as follows: 
+
+Accuracy (95.2%) Kappa (66.7%) Sensitivity (78.3%) Specificity (96.5%) 
+
+
+
+
+***
+
+
+
+
+
+
+```{r}
+DF <- read.csv("UniversalBank.csv")
+summary(DF)
+```
+
+Begin by normalizing the following Customer (Customer_1): 
+
+
+```{r}
+Age <- 40
+Age_norm <- (Age - mean(DF$Age)) / sd(DF$Age)
+Age_norm
+```
+
+```{r}
+Experience <- 10
+Experience_norm <- (Experience - mean(DF$Experience)) / sd(DF$Experience)
+Experience_norm
+```
+
+```{r}
+Income <- 84
+Income_norm <- (Income - mean(DF$Income)) / sd(DF$Income)
+Income_norm
+```
+
+```{r}
+Family <- 2
+Family_norm <- (Family - mean(DF$Family)) / sd(DF$Family)
+```
+
+
+
+```{r}
+CCAvg <- 2
+CCAvg_norm <- (CCAvg - mean(DF$CCAvg)) / sd(DF$CCAvg)
+CCAvg_norm
+```
+```{r}
+Mortgage <- 0
+Mortgage_norm <- (Mortgage - mean(DF$Mortgage)) / sd(DF$Mortgage)
+Mortgage_norm
+```
+
+```{r}
+Securities.Account <- 0
+Securities.Account_norm <- (Securities.Account - mean(DF$Securities.Account)) / sd(DF$Securities.Account)
+Securities.Account_norm
+```
+
+
+```{r}
+CD.Account <- 0
+CD.Account_norm <- (CD.Account - mean(DF$CD.Account)) / sd(DF$CD.Account)
+CD.Account_norm
+```
+
+
+```{r}
+Online <- 1
+Online_norm <- (Online - mean(DF$Online)) / sd(DF$Online)
+Online_norm
+```
+```{r}
+CreditCard <- 1
+CreditCard_norm <- CreditCard - mean(DF$CreditCard) / sd(DF$CreditCard)
+CreditCard_norm
+```
+
+
+Sort the data so that the Personal.Loan attribute is in the 1st column. 
+
+
+```{r}
+library(dplyr)
+library(tidyverse)
+DF_Sorted <-  DF %>% dplyr::select("Personal.Loan",  
+                                     everything())
+View(head(DF_Sorted))
+```
+
+
+
+
+
+
+
+
+Perform a k-NN classification with all predictors except ID and ZIP code using k = 1.
+DF2 is the dataset with ID and ZIP.Code removed. 
+
+
+
+
+```{r}
+View(head(DF))
+DF2 <- subset(DF_Sorted, select = -c(ID, ZIP.Code))
+View(head(DF2))
+summary(DF2)
+```
+Transform cateogorical predictors with more than two categories into dummy variables first. 
+
+
+
+```{r}
+class(DF2$Education)
+table(DF2$Education)
+DF2$Education_1 <- with(DF2, ifelse(Education == 1, '1', '0'))
+head(DF2$Education_1)
+
+```
+```{r}
+DF2$Education_1 <- as.numeric(DF2$Education_1)
+head(DF2$Education_1)
+```
+
+
+
+```{r}
+DF2$Education_2 <- with(DF2, ifelse(Education == 2, '1', '0'))
+DF2$Education_2 <- as.numeric(DF2$Education_2)
+
+```
+
+
+```{r}
+head(DF2$Education_2)
+```
+
+
+```{r}
+DF2$Education_3 <- with(DF2, ifelse(Education == 3, '1', '0'))
+DF2$Education_3 <- as.numeric(DF2$Education_3)
+
+```
+
+
+```{r}
+head(DF2$Education_3)
+```
+
+
+
+Remove Education column. 
+
+
+```{r}
+DF3 <- subset(DF2, select = -c(Education))
+View(head(DF3))
+summary(DF3)
+```
+
+Continue normalizing the following Customer (Customer_1) now that the Education_1, Education_2, and Education_3 columns have been created and the Education column has been removed. 
+
+
+```{r}
+Education_1 <- 0
+Education_1_norm <- (Education_1 - mean(DF3$Education_1)) / sd(DF3$Education_1)
+Education_1_norm
+```
+```{r}
+Education_2 <- 1
+Education_2_norm <- (Education_2 - mean(DF3$Education_2)) / sd(DF3$Education_2)
+Education_2_norm
+```
+
+```{r}
+Education_3 <- 0
+Education_3_norm <- (Education_3 - mean(DF3$Education_3)) / sd(DF3$Education_3)
+Education_3_norm
+```
+
+
+
+
+Normalize the data.  
+
+
+```{r}
+library(class)
+library(caret)
+norm_model <- preProcess(DF3[,-1], method = c("center", "scale"))
+DF3_norm <- predict(norm_model, DF3)
+summary(DF3_norm)
+```
+
+
+
+
+Partition the data into training (60%) and validation (40%) sets.
+
+
+```{r}
+Index_Train <- createDataPartition(DF3_norm$Personal.Loan, p = 0.6, list = FALSE)
+Train <- DF3_norm[Index_Train, ]
+Validation <- DF3_norm[-Index_Train, ]
+```
+
+
+First column in the Personal.Loan status (i.e. class output). 
+Columns 2-14 are normalized "predictors." 
+
+
+
+```{r}
+Train_Predictors <- Train[, 2:14]
+Validate_Predictors <- Validation[, 2:14]
+Train_Labels <- Train[, 1]
+Validate_Labels <- Validation[, 1]
+```
+
+Train a k-NN model where k = 1. 
+
+```{r}
+Predicted_Test_Labels <- knn(Train_Predictors,
+                             Validate_Predictors,
+                             cl = Train_Labels,
+                             k = 1)
+```
+
+
+Look at first 6 values of predicted class (i.e. Personal.Loan status) of validation set. 
+
+```{r}
+head(Predicted_Test_Labels)
+```
+
+
+
+
+
+Consider the following customer: 
+Age = 40, Experience = 10, Income = 84, Family = 2, CCavg = 2, 
+Education_1 = 0 , Education_2 = 1, Education_3 = 0, Mortgage = 0, 
+Securities Account = 0, Online = 1 and Credit Card = 1 
+
+
+Use the normalized values of Customer_1 in the data.frame: 
+
+
+```{r}
+
+Customer_1 <- data.frame(Age_norm, Experience_norm, Income_norm, Family_norm, CCAvg_norm, Education_1_norm, Education_2_norm, Education_3_norm, Mortgage_norm, Securities.Account_norm, CD.Account_norm, Online_norm, CreditCard_norm)
+print(Customer_1)
+View(Customer_1)
+```
+
+
+How would this customer be classified? 
+
+Predict Customer 1 using k = 1. 
+
+```{r}
+Predicted_Customer_1 <- knn(Train_Predictors,
+                             Customer_1,
+                             cl = Train_Labels,
+                             k = 1)
+```
+
+
+This customer (Customer_1) is classified as 0 or the failure class (loan denial). 
+
+
+```{r}
+head(Predicted_Customer_1)
+```
+
+What is a choice of k that balances between overfitting and ignoring the predictor information?  
+
+Use the Train function with the DF3 (unnormalized data) and train the model and normalize the data all at one time: 
+
+
+```{r}
+set.seed(123)
+Search_grid <- expand.grid(k = c(2:20))
+model <- train(as.factor(Personal.Loan)~Age+Experience+Income+Family+CCAvg+Mortgage+
+                 Securities.Account+CD.Account+Online+CreditCard+Education_1+
+                 Education_2+Education_3, data = DF3, method = "knn", 
+               tuneGrid = Search_grid,
+               preProcess = c('center', 'scale'))
+```
+
+
+```{r}
+model
+```
+k = 2 has a slightly lower accuracy rate than k = 5. 
+k = 2 has a higher Kappa rate than k = 5. 
+Since the data is imbalanced, the k with the highest Kappa is selected. 
+
+k = 2 is the best choice of k. 
+
+A choice of k that balances between overfitting and ignoring the predictor information is k = 2 due to its high accuracy rate and high Kappa rate. This data was imbalanced with 9.6% of the observations being labeled as the success class of 1 (loan acceptance). As such, a high Kappa was also desired when selecting k due to the imbalance of the data. 
+
+The following code will compare k = 2 vs k = 5: 
+
+
+
+
+Show the confusion matrix for the validation data that results from using the best k.  
+
+Train a k-NN model where k = 2. 
+
+```{r}
+Predicted_Validate_Labels_k2 <- knn(Train_Predictors,
+                             Validate_Predictors,
+                             cl = Train_Labels,
+                             k = 2)
+```
+
+
+Look at first 6 values of predicted class (i.e. Personal.Loan status) of validation set. 
+
+```{r}
+set.seed(123)
+head(Predicted_Validate_Labels_k2)
+```
+
+```{r}
+library(gmodels)
+set.seed(123)
+CrossTable(x = Validate_Labels, y = Predicted_Validate_Labels_k2, prop.chisq = FALSE)
+```
+
+                            
+
+```{r}
+set.seed(123)
+confusionMatrix(as.factor(Validate_Labels), as.factor(Predicted_Validate_Labels_k2),
+                positive = '1',
+                dnn = c("Validate_Labels", "Predicted_validate_Labels_k2"
+                ))
+```
+
+
+
+
+  
+
+Train a k-NN model where k = 5. 
+```{r}
+Predicted_Validate_Labels_k5 <- knn(Train_Predictors,
+                             Validate_Predictors,
+                             cl = Train_Labels,
+                             k = 5)
+```
+Look at first 6 values of predicted class (i.e. Personal.Loan status) of validation set. 
+
+
+```{r}
+set.seed(123)
+head(Predicted_Validate_Labels_k5)
+```
+
+
+
+
+
+```{r}
+library(gmodels)
+set.seed(123)
+CrossTable(x = Validate_Labels, y = Predicted_Validate_Labels_k5, prop.chisq = FALSE)
+```
+
+
+```{r}
+set.seed(123)
+confusionMatrix(as.factor(Validate_Labels), as.factor(Predicted_Validate_Labels_k5),
+                positive = '1',
+                dnn = c("Validate_Labels", "Predicted_validate_Labels_k5"
+                ))
+```
+ 
+
+k = 2 is the best choice of k. 
+
+
+Consider the following customer:  
+Age = 40, Experience = 10, Income = 84, Family = 2, CCavg = 2, 
+Education_1 = 0 , Education_2 = 1, Education_3 = 0, Mortgage = 0, 
+Securities Account = 0, Online = 1 and Credit Card = 1 
+
+Classify the customer using the best k. 
+
+Let's use the best k as 2. 
+
+```{r}
+
+Customer_1 <- data.frame(Age_norm, Experience_norm, Income_norm, Family_norm, CCAvg_norm, Education_1_norm, Education_2_norm, Education_3_norm, Mortgage_norm, Securities.Account_norm, CD.Account_norm, Online_norm, CreditCard_norm)
+print(Customer_1)
+View(Customer_1)
+```
+
+How would this customer be classified? 
+
+Predict Customer 1 using k = 2. 
+
+
+```{r}
+Predicted_Customer_1_k2 <- knn(Train_Predictors,
+                             Customer_1,
+                             cl = Train_Labels,
+                             k = 2)
+head(Predicted_Customer_1_k2)
+```
+This customer (Customer_1) is classified as 0 or the failure class (loan denial)
+based on the best k of k = 2. 
+
+
+
+Partition the data into training (50%), validation (30%), and testing (20%) sets. 
+
+```{r}
+Index_Train2 <- createDataPartition(DF3_norm$Personal.Loan, p = 0.2, list = FALSE)
+Test2 <- DF3_norm[Index_Train2, ]
+Temp <- DF3_norm[-Index_Train2, ]
+```
+
+20% of data (1000 observations) is now in testing set Test2. 
+
+
+```{r}
+Train_index2 <- createDataPartition(Temp$Personal.Loan, p = 0.625, list = FALSE)
+Train2 <- Temp[Train_index2,]
+Validate2 <- Temp[-Train_index2,]
+```
+
+50% of data (2500 observations) is now in training set Train2. 
+30% of data (1500 observations) is now in validation set Validate2. 
+
+First column in the Personal.Loan status (i.e. class output). 
+Columns 2-14 are normalized "predictors." 
+
+
+```{r}
+Train_Predictors2 <- Train2[, 2:14]
+Validate_Predictors2 <- Validate2[, 2:14]
+Train_Labels2 <- Train2[, 1]
+Validate_Labels2 <- Validate2[, 1]
+Test_Predictors2 <- Test2[, 2:14]
+Test_Labels2 <- Test2[, 1]
+```
+
+
+Compare the Confusion Matrix of the test set with that of the training and validation sets. 
+
+
+```{r}
+Predicted_Test_Labels_NEW <- knn(Train_Predictors2,
+                             Test_Predictors2,
+                             cl = Train_Labels2,
+                             k = 2)
+```
+
+Look at the first 6 values of the predicted class(i.e. Personal.Loan status) of test set. 
+
+
+```{r}
+head(Predicted_Test_Labels_NEW)
+```
+Confusion Matrix of the Testing Set. 
+
+```{r}
+library(gmodels)
+set.seed(123)
+CrossTable(x = Test_Labels2, y = Predicted_Test_Labels_NEW, prop.chisq = FALSE)
+```
+
+
+                            
+
+```{r}
+set.seed(123)
+confusionMatrix(as.factor(Test_Labels2), as.factor(Predicted_Test_Labels_NEW),
+                positive = '1',
+                dnn = c("Test_Labels2", "Predicted_Test_Labels_NEW"
+                ))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+Compare the Confusion Matrix of the test set with that of the training and validation sets. 
+
+
+
+
+```{r}
+Predicted_Test_Labels_NEW2 <- knn(Train_Predictors2,
+                             Validate_Predictors2,
+                             cl = Train_Labels2,
+                             k = 2)
+```
+
+Look at the first 6 values of the predicted class(i.e. Personal.Loan status) of the validation set. 
+
+
+```{r}
+head(Predicted_Test_Labels_NEW2)
+```
+Confusion Matrix of the Validation Set. 
+
+```{r}
+library(gmodels)
+set.seed(123)
+CrossTable(x = Validate_Labels2, y = Predicted_Test_Labels_NEW2, prop.chisq = FALSE)
+```
+
+
+                            
+
+
+```{r}
+set.seed(123)
+confusionMatrix(as.factor(Validate_Labels2), as.factor(Predicted_Test_Labels_NEW2),
+                positive = '1',
+                dnn = c("Validate_Labels2", "Predicted_Test_Labels_NEW2"
+                ))
+```
+
+
+
+
+
+
+
+
+
+Compare the Confusion Matrix of the test set with that of the training and validation sets.  
+
+
+
+
+```{r}
+Predicted_Test_Labels_NEW3 <- knn(Train_Predictors2,
+                             Train_Predictors2,
+                             cl = Train_Labels2,
+                             k = 2)
+```
+
+Look at the first 6 values of the predicted class(i.e. Personal.Loan status) of the training set. 
+
+
+
+```{r}
+head(Predicted_Test_Labels_NEW3)
+```
+
+Confusion Matrix of the Training Set. 
+
+
+```{r}
+library(gmodels)
+set.seed(123)
+CrossTable(x = Train_Labels2, y = Predicted_Test_Labels_NEW3, prop.chisq = FALSE)
+```
+
+
+
+
+
+```{r}
+set.seed(123)
+confusionMatrix(as.factor(Train_Labels2), as.factor(Predicted_Test_Labels_NEW3),
+                positive = '1',
+                dnn = c("Train_Labels2", "Predicted_Test_Labels_NEW3"
+                ))
+```
+
+
+
+
+
+Compare the confusion matrix of the test set with that of the training and validation sets. 
+
+Comment on the differences and their reason. 
+
+
+
+
+
+
+
+```{r}
+TTable <- c("95.2%", "66.7%", "78.3%", "96.5%")
+VTable <- c("95.5%", "71.4%", "76.8%", "97.2%")
+TYTable <- c("97.6%", "87.6%", "91.7%", "98.4%")
+Analysis <- data.frame(TestSet = TTable, ValidSet = VTable,
+                       TrainSet = TYTable,
+                       row.names = c('Accuracy', 'Kappa', 
+                                     'Sensitivity', 'Specificity'))
+print(Analysis)
+```
+
+
+Regarding all four of these metrics (Accuracy, Recall, Precision, and Specificity), 
+the k-NN algorithm performed the best on the Training Set, slightly worse on the Validation Set, and the worst on the Testing Set. This is to be expected since the algorithm is more familiar with the Training Set data that it has seen vs the Testing Set data that it has not seen. However, the k-NN algorithm did not perform significantly worse on the Testing Set so this confirms that k = 2 is appropriate for optimizing the hyper-parameter.  
+
+
+
