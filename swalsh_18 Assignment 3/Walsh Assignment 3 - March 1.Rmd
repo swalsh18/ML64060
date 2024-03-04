@@ -1,0 +1,236 @@
+---
+title: "Sharon Walsh - Assignment 3 - ML 64060"
+author: "Sharon Walsh"
+date: "2024-02-27"
+output: html_document
+---
+
+***
+## Problem Statement 
+
+Use Naive Bayes for Classification. 
+
+***
+
+## Summary  
+
++ The probability that a customer who owns a bank credit card and is actively using online banking services will accept the loan offer is 1.53% when using the precise same independent variable classifications to predict.
+
++ The probability that a customer who owns a bank credit card and is actively using online banking services will accept the loan offer is 9.08% when calculating Naive Bayes formula manually.
+
++ The probability that a customer who owns a bank credit card and is actively using online banking services will accept the loan offer is 8.97% when using naiveBayes() function.
+
+***
+
+
+
+
+
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("C:/Users/sharo/OneDrive/Documents/ML 2024/Assignment 3")
+DF <- read.csv("UniversalBank.csv")
+summary(DF)
+```
+
+9.6% of the customers (480 observations) accepted the personal loan. 
+
+In this exercise, we focus on two predictors: Online and Credit Card. 
+The outcome is Personal Loan. 
+
+
+
+
+```{r}
+library(dplyr)
+library(tidyverse)
+DF2 <- subset(DF, select = -c(ID, Age, Experience, Income, ZIP.Code, 
+                              Family, CCAvg, Education, Mortgage, 
+                              Securities.Account, CD.Account))
+View(DF2)
+summary(DF2)
+```
+No need to normalize the data since the predictors (Online & CreditCard) consists of values that are either 0 or 1. 
+
+
+```{r}
+str(DF2)
+```
+
+```{r}
+sum(is.na(DF2))
+```
+There are no missing values in the dataset. 
+
+
+```{r}
+DF3 <- DF2
+str(DF3)
+```
+
+Partition the data into training (60%) and validation (40%) sets.
+
+```{r}
+library(class)
+library(caret)
+set.seed(234)
+Index_Train <- createDataPartition(DF3$Personal.Loan, p = 0.6, list = FALSE)
+Train <- DF3[Index_Train, ]
+Validation <- DF3[-Index_Train, ]
+```
+
+```{r}
+View(Train)
+View(Validation)
+```
+
+
+```{r}
+str(Train)
+```
+
+```{r}
+str(Validation)
+```
+
+A. Create a pivot table for the training data with Online as a column variable, Credit Card as a row variable, and Loan as a secondary row variable. The values inside the table should convey the count. In R use functions melt() and cast(), or function table(). 
+
+
+```{r}
+set.seed(234)
+ftable(Train, row.vars = c(3,1), col.vars = 2)
+```
+
+
+B. Consider the task of classifying a customer who owns a bank credit card and is actively using online banking services. Looking at the pivot table, what is the probability that this customer will accept the loan offer? 
+
+```{r}
+Customer_1 <- (46/3000)
+Customer_1
+```
+The probability that this customer will accept the loan offer is 0.01533333.
+[This is the probability of loan acceptance(Loan = 1) conditional on having a bank credit card (Credit Card = 1) and being an active user of online banking services (Online = 1)].
+
+```{r}
+Customer_1*100
+```
+
+This can also be expressed as a 1.53% chance that this customer will accept the loan offer. 
+
+C. Create two seperate pivot tables for the training data. One will have Loan(rows) as a funcion of Online columns. 
+
+```{r}
+set.seed(234)
+ftable(Train, row.vars = 1, col.vars = 2)
+```
+
+The other will have Loan (rows) as a function of Credit Card.
+
+```{r}
+set.seed(234)
+ftable(Train, row.vars = 1, col.vars = 3)
+```
+
+D. Compute the following probabilites [P(A|B) means "the probability of A given B"]:
+
+i. P(CreditCard = 1  | Loan = 1) (the proportion of credit card holders among the loan acceptors)
+
+```{r}
+Proportion_i <- 78 / (78+191)
+Proportion_i
+```
+
+ii. P(Online = 1 | Loan = 1) (the proportion of Online customers among the loan acceptors)
+
+```{r}
+Proportion_ii <- 166 / ( 166+103)
+Proportion_ii
+```
+
+iii. P(Loan = 1) (the proportion of loan acceptors)
+
+```{r}
+Proportion_iii <- (71+120+32+46) / (71+120+32+46 + 2731)
+Proportion_iii
+```
+
+iv. P(Credit Card = 1 | Loan = 0) (the proportion of credit card holders among the loan deniers)
+
+```{r}
+Proportion_iv <- 800 / (800 + 1931)
+Proportion_iv
+```
+
+v. P(Online = 1 | Loan = 0) (the proportion of Online customers among the loan deniers)
+
+```{r}
+Proportion_v <- 1645 / (1645 + 1086)
+Proportion_v
+```
+
+vi. P(Loan = 0) (the proportion of loan deniers)
+
+```{r}
+Proportion_vi <- (766+1165+320+480) / (766+1165+320+480 + 269)
+Proportion_vi
+```
+
+E. Use the quantities computed above to compute the naive Bayes probability 
+P(Loan = 1 | CreditCard = 1, Online = 1). 
+
+```{r}
+NaiveBayesManual <- (Proportion_i*Proportion_ii*Proportion_iii) / ((Proportion_i*Proportion_ii*Proportion_iii) + (Proportion_iv*Proportion_v*Proportion_vi))
+NaiveBayesManual
+```
+The probability that this customer will accept the loan offer is 0.09081707.
+[This is the probability of loan acceptance(Loan = 1) conditional on having a bank credit card (Credit Card = 1) and being an active user of online banking services (Online = 1)].
+
+
+
+```{r}
+0.09081707*100
+```
+This can also be expressed as a 9.08% chance that this customer will accept the loan offer.
+
+
+The naive Bayes probability is 0.09081707 (9.08%). 
+
+
+F. Compare this value with the one obtained from the pivot table in (B). 
+Which is a more accurate estimate?
+
+Probability from Pivot Table in (B): 0.01533333 (1.53%)
+Probability from naive Bayes in (E): 0.09081707 (9.08%)
+
+The more accurate estimate is exact method of (B): 0.01533333 (1.53%).
+The exact method uses the precise same independent variable classifications to predict.
+
+G. Which of the entries in this table are needed for computing
+P(Loan = 1 | CreditCard = 1, Online = 1)?
+
+Run naive Bayes on the data. 
+
+Examine the model output on training data, and find the entry that correpsonds to 
+P(Loan = 1 | CreditCard = 1, Online = 1). 
+
+Compare this to the number you obtained in (E). 
+
+```{r}
+library(e1071)
+NaiveBayes <- naiveBayes(Personal.Loan ~., data = Train)
+NaiveBayes
+```
+The entry that correpsonds to  P(Loan = 1 | CreditCard = 1, Online = 1) is the 
+A-priori probability of Y (Personal.Loan) being equal to 1 (loan acceptance). 
+This probability is 0.08966667 (8.97%). 
+This is very similar to the probability of 0.09081707 (9.08%) which was calculated from the Naive Bayes formula manually in section (E).
+
