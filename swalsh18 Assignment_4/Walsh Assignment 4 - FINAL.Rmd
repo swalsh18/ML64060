@@ -1,0 +1,333 @@
+---
+title: "Walsh - ML 64060 - Assignment 4"
+author: "Sharon Walsh"
+date: "2024-03-05"
+output: html_document
+---
+
+***
+# Summary 
+
++ The 21 firms can be divided into 2 clusters based on ROA and Net Profit Margin. 
+
++ Cluster 1 = Less Risky / High Profit 
+
++ Cluster 1 NAME: Risk-Averse and Profitable
+
++ Cluster 1 = higher average ROA, higher average Net Profit Margin, more prone to "Hold" and "Moderate Buy" recommendations with regards to stock purchases and investments, majority of firms in US, and all firms listed with the NYSE stock change. 
+
+
++ Cluster 2 = More Risky / Lower Profit 
+
++ Cluster 2 NAME: Risk-Prone and Less Profitable
+
++ Cluster 2 = lower average ROA, lower Net average Profit Margin, fairly evenly spread amongst "Hold" "Moderate Buy" "Moderate Sell" recommendations with regards to stock purchases and investments, half of firms in US/half of firms in Canada and Europe, most firms listed with NASDAQ.  
+
+***
+
+# Problem Statement 
+
+
++ An equities analyst is studying the pharmaceutical industry and would like your help in exploring and understanding the financial data collected by her firm. 
+
++ Her main objective is to understand the structure of the pharmaceutical
+industry using some basic financial measures. 
+
++ Financial data gathered on 21 firms in the pharmaceutical industry are
+available in the file Pharmaceuticals.csv. 
+
+***
+
+
+```{r}
+setwd("C:/Users/sharo/OneDrive/Documents/ML 2024/Assignment 4")
+DF <- read.csv("Pharmaceuticals.csv")
+```
+
+```{r}
+library(tidyverse)
+library(corrplot)
+library(gridExtra)
+library(GGally)
+library(cluster)
+library(factoextra)
+library(magrittr)
+library(dplyr)
+```
+
+
+```{r}
+head(DF)
+```
+A. Use only the numerical variables (1 to 9) to cluster the 21 firms. 
+  
+Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s)used, the number of clusters formed, and so on.
+
+
+
+```{r}
+rownames(DF) <- DF$Name
+View(DF)
+```
+
+```{r}
+sum(is.na(DF))
+```
+There are no missing values in this dataset. 
+
+
+```{r}
+DF %>%
+  gather(attributes, value, 3:11) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = 'lightblue2', color = 'black') +
+  facet_wrap(~attributes, scales = 'free_x') +
+  labs(x="Values", y="Frequency") +
+  theme_bw()
+```
+
+The attribute "Leverage" appears to contain an outlier. 
+The attribute "PE Ratio" appears to contain an outlier.
+These outliers may affect the analysis if Leverage and PE Ratio are used. 
+
+For the sake of providing clarity and succinctness to the equities analyst whose objective is to understand the structure of the pharmaceutical
+industry using some basic financial measures, correlation will be used in order to determine which of the 9 numerical variables will be used for analysis. 
+
+
+```{r}
+corrplot(cor(DF[, c(3:11)]), type = 'upper', method = 'number', tl.cex = 0.9)
+```
+
+Leverage and PE Ratio do not appear to have a strong correlation. As such, the outliers they contain may not be consequential. 
+
+There is a strong linear correlation between Net Profit Margin and ROA. As such, Net Profit Margin and ROA will be the 2 variables used for the analysis. 
+
+The purpose of this assignment is to use k-Means for clustering. As such, k_Means will be used for this analysis. 
+
+
+```{r}
+ggplot(DF, aes(x = Net_Profit_Margin, y = ROA)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE) +
+  theme_bw()
+```
+
+
+a. Use only the numerical variables (1 to 9) to cluster the 21 firms. 
+
+
+```{r}
+DF2 <- DF[, -c(12, 13, 14)]
+head(DF2)
+```
+
+Non-Numerical columns are removed (Median_Recommendation, Location, and Exchange).
+
+```{r}
+View(DF2)
+```
+
+
+
+```{r}
+str(DF2)
+```
+
+
+```{r}
+DF2 <- DF2[, -c(1,2)]
+head(DF2)
+```
+Removed the Name and Symbol columns in order to scale the dataset. 
+
+```{r}
+summary(DF2)
+```
+
+```{r}
+DF2 <- scale(DF2)
+head(DF2)
+```
+
+
+```{r}
+DF_ROA_NPM <- DF2[, c(5,9)]
+summary(DF_ROA_NPM) # Clustering the firms based on their Net_Profit_Margin and ROA due to their strong correlation
+```
+
+
+
+
+```{r}
+distance <- get_dist(DF_ROA_NPM) # Using Net Profit Margin and ROA for analysis
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+
+This distance graph demonstrates Euclidean distance between the data points. The darker the red, the farther the points are from each other. The darker the teal(or green), the closer together the points are.
+
+In other words, the teal (or green) points are more similar to each other. 
+The red points are less similar to each other. 
+
+
+```{r}
+fviz_nbclust(DF_ROA_NPM, kmeans, method = "wss") # Elbow Graph
+```
+
+
+The optimal number of clusters is 2 via the Elbow Graph method. 
+
+
+```{r}
+fviz_nbclust(DF_ROA_NPM, kmeans, method = "silhouette") # Silhouette Graph
+```
+
+
+The optimal number of clusters is 2 via the Silhouette method. 
+
+
+
+```{r}
+set.seed(234)
+
+k2 <- kmeans(DF_ROA_NPM, centers = 2, nstart = 25)
+print(k2)
+```
+```{r}
+k2$centers
+```
+```{r}
+fviz_cluster(k2, data = DF_ROA_NPM)
+```
+```{r}
+fit_data <- kmeans(DF_ROA_NPM, 2)
+aggregate(DF_ROA_NPM, by = list(fit_data$cluster), FUN = mean)
+```
+
+
+
+```{r}
+norm_data <- as.data.frame(DF_ROA_NPM, fit_data$cluster)
+rownames(norm_data) <- DF$Symbol
+norm_data
+```
+
+```{r}
+View(norm_data)
+```
+
+
+```{r}
+clusplot(norm_data, fit_data$cluster, color = TRUE, shade = TRUE, labels = 2, lines = 0, xlab = "ROA", ylab = "Net_Profit_Margin")
+```
+
+
+
+B. Interpret the clusters with respect to the numerical variables used in forming the clusters
+
+
+Cluster 1 (BLUE) has an average ROA of 0.83. 
+Cluster 2 (RED) has an average ROA of -0.91. 
+
+Takeaway: Cluster 1 has a higher average ROA. 
+
+Cluster 1 (BLUE) has an average Net Profit Margin of 0.68. 
+Cluster 2 (RED) has an average Net Profit Margin of -0.75.
+
+Takeaway: Cluster 1 has a higher average Net Profit Margin.
+
+To summarize: 
+
+Cluster 1 (BLUE) has a higher Return on Assets (ROA) and a higher Net Profit Margin on average.
+
+Cluster 2 (RED) has a lower Return on Assets (ROA) and a lower Net Profit Margin on average. 
+
+
+C. Is there a pattern in the clusters with respect to the non-numerical variables (10 to 12)?
+```{r}
+dd <- cbind(DF, cluster = k2$cluster)
+head(dd)
+```
+
+```{r}
+DD <- (dd[, c( 12:15)])
+DD
+```
+
+```{r}
+DT::datatable(DD, class = 'cell-border stripe', options = list(autoWidth = TRUE, pageLength = 21))
+```
+
+
+```{r}
+ggplot(DD, aes(Median_Recommendation, colour = factor(cluster))) +
+  geom_bar() +
+  geom_text(
+    aes(
+      y = after_stat(count + 2),
+      label = after_stat(count)
+    ),
+    stat = "count"
+  )
+```
+
+
+Cluster 1 has a higher average Return on Assets and a higher average Net Profit Margin and is more prone to "Hold" and "Moderate Buy" with regards to stock purchase. 
+
+Cluster 2 has a lower average Return on Assets and a lower average Net Profit Margin and is fairly evenly spread amongst "Hold", "Moderate Buy", "Moderate Sell" with regards to stock purchase. 
+ 
+ 
+
+```{r}
+ggplot(DD, aes(Location, colour = factor(cluster))) +
+  geom_bar() +
+  geom_text(
+    aes(
+      y = after_stat(count + 2),
+      label = after_stat(count)
+    ),
+    stat = "count"
+  )
+```
+
+
+Cluster 1 (higher average ROA & higher average Net Profit Margin) has the majority of it's firm's headquarters in the US. Cluster 1 has 1 firm headquarters in Switzerland and 2 in the UK. 
+
+Cluster 2 (lower average ROA & lower average Net Profit Margin) has half of its firm's headquarters in the US and the other half in Canada, France, Germany, Ireland, and the UK. 
+
+
+
+
+```{r}
+ggplot(DD, aes(Exchange, colour = factor(cluster))) +
+  geom_bar() +
+  geom_text(
+    aes(
+      y = after_stat(count + 2),
+      label = after_stat(count)
+    ),
+    stat = "count"
+  )
+```
+
+
+
+Cluster 1 (higher average ROA & higher average Net Profit Margin) has all of the firms listed with the NYSE stock exchange. 
+
+Cluster 2 (lower average ROA & lower average Net Profit Margin) has most of the firms listed with the NYSE stock exchange. Cluster 2 has 1 firm listed with AMEX and 1 firm listed with NASDAQ. 
+
+
+D. Provide an appropriate name for each cluster using any or all of the variables in the dataset. 
+
+Cluster 1 = higher average ROA, higher average Net Profit Margin, more prone to "Hold" and "Moderate Buy" recommendations with regards to stock purchases and investments, majority of firms in US, and all firms listed with the NYSE stock change. 
+
+Cluster 2 = lower average ROA, lower Net average Profit Margin, fairly evenly spread amongst "Hold" "Moderate Buy" "Moderate Sell" recommendations with regards to stock purchases and investments, half of firms in US/half of firms in Canada and Europe, most firms listed with NASDAQ. 
+
+
+Cluster 1 = Less Risky / High Profit
+
+Cluster 2 = More Risky / Lower Profit
+
+Cluster 1 NAME: Risk-Averse and Profitable
+
+Cluster 2 NAME: Risk-Prone and Less Profitable
