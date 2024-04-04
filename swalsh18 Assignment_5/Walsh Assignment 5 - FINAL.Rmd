@@ -1,0 +1,546 @@
+---
+title: "Sharon Walsh - Assignment 5 - ML 64060"
+author: "Sharon Walsh"
+date: "2024-03-25"
+output: html_document
+---
+***
+# Summary 
+
++ Hierarchical clustering was used to cluster the data. 4 clusters total.
+
++ The following conclusions were obtained based on the averages of each cluster: 
+
++ Cluster 1 = High Protein, High Sodium, High Fiber, High Potassium
++ Cluster 2 = High Calories, High Fat, High Sodium, High Sugars
++ Cluster 3 = High Calories, Med-High Protein, High Sodium, High Carbohydrates
++ Cluster 4 = No Fat, No Sodium, No Sugar, High Carbohydrates
+
+Please also note:
+
++ Clusters 2 & 3 each contain 33 cereals each.
++ Cluster 1 contains 3 cereals and Cluster 4 contains 5 cereals. 
+
++ If consumers are comparing cereals amongst the ones contained in this dataset and desire cereals with high levels of calories, fat, sodium, and sugars (Cluster 2) or cereals with high or med-high levels of calories, protein, sodium, and carbohydrates (Cluster 3), then those consumers have more options since Clusters 2 and 3 each contain 33 cereals. 
+
++ Whereas if consumers are comparing cereals amongst the ones contained in this dataset and desire cereals with high levels of protein, sodium, fiber, and potassium (Cluster 1) or cereals with no fat, no sodium, no sugar, and high carbohydrates (Cluster 4), then those consumers have less options since Cluster 1 only contains 3 cereals total and Cluster 4 only contains 5 cereals total.
+
++ Due to the discrepancies in scales and units used to measure nutritional attributes, normalization is highly recommended with very few (if any) exceptions when requested to find a cluster of "healthy" cereals. Additionally "healthy" cereals can be defined many different ways with a variety of nutritional attributes so there is even more reason to normalize all the various nutritional attributes. 
+
+
+***
+
+# Problem Statement 
+
+
++ The purpose of this assignment is to use Hierarchical Clustering. 
+
+***
+
+
+The dataset Cereals.csv includes nutritional information, store display, and consumer ratings for
+77 breakfast cereals. 
+
+
+```{r}
+setwd("C:/Users/sharo/OneDrive/Documents/ML 2024/Assignment 5")
+DF <- read.csv("Cereals.csv")
+```
+
+```{r}
+View(DF)
+```
+
+```{r}
+library(gridExtra)
+library(GGally)
+library(factoextra)
+library(magrittr)
+library(dplyr)
+library(tidyverse)
+```
+
+Data Preprocessing. Remove all cereals with missing values.
+
+
+
+```{r}
+sum(is.na(DF))
+```
+```{r}
+sapply(DF, function(x) sum(is.na(x))) # There is 1 missing value in the carbohydrates attribute. There is 1 missing value in the sugars attribute. There are 2 missing values in the potassium attribute.
+```
+
+
+```{r}
+DF <- na.omit(DF)
+```
+
+```{r}
+sum(is.na(DF))
+```
+```{r}
+sapply(DF, function(x) sum(is.na(x))) # Missing values are removed. 
+```
+
+
+
+```{r}
+View(DF)
+```
+
+```{r}
+summary(DF)
+```
+```{r}
+rownames(DF) <- DF$name
+```
+
+
+```{r}
+View(DF)
+```
+
+Apply hierarchical clustering to the data using Euclidean distance to the normalized
+measurements.
+
+
+```{r}
+DF %>%
+  gather(attributes, value, 4:16) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = 'lightblue2', color = 'black') +
+  facet_wrap(~attributes, scales = 'free_x') +
+  labs(x="Values", y="Frequency") +
+  theme_bw()
+```
+
+Hierarchical clustering is sensitive to noise and outliers. 
+The following attributes appear to contain outliers: fat, protein, vitamins, fiber, rating. 
+
+ 
+
+
+```{r}
+library(corrplot)
+corrplot(cor(DF[, c(4:16)]), type = 'upper', method = 'number', tl.cex = 0.9)
+```
+
+The following attributes have a strong correlation between each other: 
+
+calories, rating, sugars, fiber 
+
+For clarity and succinctness in the analysis, these four attributes will be used. 
+
+
+
+```{r}
+ggplot(DF, aes(x = calories + sugars + fiber, y = rating)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE) +
+  theme_bw()
+```
+
+Identify outliers from the variables being used for the clustering analysis. 
+
+```{r}
+boxplot(DF$fiber, plot=FALSE)$out
+```
+```{r}
+boxplot(DF$rating, plot=FALSE)$out
+```
+
+Although these outliers are identified, not enough information is known as to whether it is appropriate to remove them. For the sake of this analysis, the outliers will remain in the dataset. 
+
+
+```{r}
+DF2 <- subset(DF, select = -c(name, mfr, type, protein, fat, sodium, carbo, potass, vitamins, 
+                              shelf, weight, cups))
+```
+
+
+
+```{r}
+View(DF2)
+```
+
+```{r}
+DF2 <- scale(DF2) #Data is normalized. 
+```
+
+```{r}
+View(DF2)
+```
+
+```{r}
+summary(DF2)
+```
+```{r}
+str(DF2)
+```
+
+Apply hierarchical clustering to the data using Euclidean distance to the normalized measurements.
+Use Agnes to compare the clustering from single linkage, complete
+linkage, average linkage, and Ward. Choose the best method.
+
+
+```{r}
+library(stats)
+library(cluster)
+set.seed(234)
+# Dissimilaarity matrix
+Dist <- dist(DF2, method = "euclidean")
+```
+
+
+```{r}
+distance <- get_dist(DF2) # Euclidean distance default
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+
+
+```{r}
+# Compute with agnes and with different linkage methods
+Sgl_Linkage <- agnes(Dist, method = "single")
+print(Sgl_Linkage$ac)
+```
+
+```{r}
+# Compute with agnes and with different linkage methods
+Comp_Linkage <- agnes(Dist, method = "complete")
+print(Comp_Linkage$ac)
+```
+
+```{r}
+# Compute with agnes and with different linkage methods
+Avg_Linkage <- agnes(Dist, method = "average")
+print(Avg_Linkage$ac)
+```
+```{r}
+# Compute with agnes and with different linkage methods
+Ward_Linkage <- agnes(Dist, method = "ward")
+print(Ward_Linkage$ac)
+```
+
+The best method is Ward. The Ward Linkage ac is closest to 1 with a result of 0.9663268. 
+
+```{r}
+# Plot the obtained dendrogram
+pltree(Ward_Linkage, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+```
+
+
+```{r}
+# Hierarchical clustering using Complete Linkage
+Ward <- hclust(Dist, method = "ward.D2" )
+# Plot the obtained dendrogram
+plot(Ward, cex = 0.6, hang = -1)
+```
+
+How many clusters would you choose?
+Optimal number of clusters is 4 via the Elbow Graph method. 
+
+```{r}
+fviz_nbclust(DF2, FUN = hcut, method = "wss") # Elbow Graph
+```
+
+
+
+
+```{r}
+Clusters <- cutree(Ward, k = 4) #Clusters based on Ward method and k = 4. 
+Clusters
+```
+
+```{r}
+Clusters_Print <- function(labels, k) {
+  for (i in 1:k) {
+    print(paste("cluster", i))
+    print(DF2[labels==i, c("calories", "fiber","sugars", "rating")])
+  }
+}
+```
+
+```{r}
+Clusters_Print(Clusters, 4)
+```
+
+
+```{r}
+aggregate(DF2, by = list(Clusters), FUN = mean)#Average of calories, fiber, sugars, and rating by cluster.
+```
+
+```{r}
+C <-as.data.frame(cbind(DF2, Clusters))
+nrow(C)
+```
+
+
+```{r}
+Centroids <- colMeans (C[C$Clusters ,]) #Centroids of each attribute used for analysis across clusters. 
+Centroids
+```
+
+
+```{r}
+plot(Ward, cex = 0.6, hang = -1)
+rect.hclust(Ward, k = 4, border = 2:5) #Visualization of the 4 clusters in the dendrogram. 
+```
+
+
+```{r}
+table(Clusters) # Clusters 2 & 3 each contain approximately 45% of the observations. Clusters 1 and 4 contain approximately 4% & 6% of the observations respectively. 
+```
+```{r}
+fviz_cluster(list(data = DF2, cluster = Clusters)) # Visualization of the 4 clusters. 
+```
+```{r}
+dd <- cbind(DF, cluster = Clusters)
+head(dd)
+```
+```{r}
+View(dd)
+```
+
+
+```{r}
+DT::datatable(dd[, -1], class = 'cell-border stripe', options = list(autoWidth = TRUE, pageLength = 74))
+```
+
+
+```{r}
+DD <- (dd[, c( 16:17)])
+DD
+```
+
+```{r}
+DT::datatable(DD, class = 'cell-border stripe', options = list(autoWidth = TRUE, pageLength = 74))
+```
+```{r}
+DD_Manu <- subset(dd, select = -c(name, type, calories, protein, fat, sodium,fiber,  
+                                  carbo, sugars, potass, vitamins, 
+                              shelf, weight, cups, rating))
+DD_Manu
+```
+
+```{r}
+View(DD_Manu)
+```
+
+
+
+```{r}
+ggplot(DD_Manu, aes(mfr, colour = factor(cluster))) +
+  geom_bar() +
+  geom_text(
+    aes(
+      y = after_stat(count + 2),
+      label = after_stat(count)
+    ),
+    stat = "count"
+  )
+```
+
+
+
++ Clusters by Cereal Manufacturer: 
+
+
+A = American Home Food Products
+G = General Mills
+K = Kelloggs
+N = Nabisco
+P = Post
+Q = Quaker Oats
+R = Ralston Purina
+
+
++ Cluster 1 consists of cereals from the following manufacturers: 
+K = Kelloggs
+N = Nabisco
+
++ Cluster 2 consists of cereals from the following manufacturers:
+G = General Mills
+K = Kelloggs
+P = Post
+Q = Quaker Oats
+R = Ralston Purina
+
++ Cluster 3 consists of cereals from the following manufacturers:
+A  = American Home Food Products
+G = General Mills
+K = Kelloggs
+N = Nabisco
+P = Post
+Q = Quaker Oats
+R = Ralston Purina
+
++ Cluster 4 consists of cereals from the following manufacturers: 
+N = Nabisco
+Q = Quaker Oats
+
+
+
+
+
+```{r}
+Cereals <- as.data.frame(cbind(DF, Clusters))
+View(Cereals)
+```
+
+```{r}
+Cereals_sort <- Cereals[order(Cereals$Clusters), c(1,17) ]
+View(Cereals_sort)
+```
+
+```{r}
+Cereals_number <- Cereals_sort%>%group_by(Clusters)%>%summarise(count = n())
+print(Cereals_number)
+```
+
+```{r}
+Cereals2 <- Cereals [,4:17]
+Table_clusters <- Cereals2 %>% group_by(Clusters) %>% summarize(across(.cols = everything(), .fns = mean))
+print(Table_clusters) #Average of all numerical attributes by cluster. 
+```
+
+
+
+
+```{r}
+library(cowplot)
+```
+
+
+```{r}
+calories <- ggplot(Table_clusters, aes(x = Clusters, y = calories)) + 
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(x = "Cluster", y = "Calories") +
+  ggtitle("Cluster Avg Calories")
+
+protein <- ggplot(Table_clusters, aes(x = Clusters, y = protein)) + 
+  geom_bar(stat = "identity", fill = "chocolate4") +
+  labs(x = "Cluster", y = "Protein") +
+  ggtitle("Cluster Avg Protein")
+
+fat <- ggplot(Table_clusters, aes(x = Clusters, y = fat)) + 
+  geom_bar(stat = "identity", fill = "aquamarine4") +
+  labs(x = "Cluster", y = "Fat") +
+  ggtitle("Cluster Avg Fat")
+
+sodium <- ggplot(Table_clusters, aes(x = Clusters, y = sodium)) + 
+  geom_bar(stat = "identity", fill = "aquamarine") +
+  labs(x = "Cluster", y = "Sodium") +
+  ggtitle("Cluster Avg Sodium")
+
+fiber <- ggplot(Table_clusters, aes(x = Clusters, y = fiber)) + 
+  geom_bar(stat = "identity", fill = "burlywood") +
+  labs(x = "Cluster", y = "Fiber") +
+  ggtitle("Cluster Avg Fiber")
+
+carbo <- ggplot(Table_clusters, aes(x = Clusters, y = carbo)) + 
+  geom_bar(stat = "identity", fill = "darkmagenta") +
+  labs(x = "Cluster", y = "Carbo") +
+  ggtitle("Cluster Avg Carbohydrates")
+
+sugars <- ggplot(Table_clusters, aes(x = Clusters, y = sugars)) + 
+  geom_bar(stat = "identity", fill = "gold") +
+  labs(x = "Cluster", y = "Sugars") +
+  ggtitle("Cluster Avg Sugars")
+
+potass <- ggplot(Table_clusters, aes(x = Clusters, y = potass)) + 
+  geom_bar(stat = "identity", fill = "deeppink1") +
+  labs(x = "Cluster", y = "Potass") +
+  ggtitle("Cluster Avg Potass")
+
+rating <- ggplot(Table_clusters, aes(x = Clusters, y = rating)) + 
+  geom_bar(stat = "identity", fill = "indianred") +
+  labs(x = "Cluster", y = "Rating") +
+  ggtitle("Cluster Avg Rating")
+
+plot_grid(calories, protein, fat, sodium, fiber, carbo, sugars, potass, rating)
+```
+
+
++ Highest calories on average: Cluster 2
++ Highest protein on average: Cluster 1
++ Highest fat on average: Cluster 2
++ Highest sodium on average: Cluster 3
++ Highest fiber on average: Cluster 1
++ Highest carbohydrates on average: Cluster 3
++ Highest sugar on average: Cluster 2
++ Highest potassium on average: Cluster 1
++ Highest rating on average: Cluster 1
+
+
+```{r}
+Cluster_1_Table <- c("Lowest","Highest","Highest","Very High","Highest", "Lowest","Lowest","Highest",
+                     "Highest")
+Cluster_2_Table <- c("Highest","Lowest","Lowest","Very High","Lowest","Med-Low", "Highest",
+                     "Very Low","Lowest")
+Cluster_3_Table <- c("Med-High","Average","Average","Highest","Med-Low","Highest","Very Low",
+                     "Very Low", "Average")
+Cluster_4_Table <- c("Average","Average","None","None","Med-Low","Very High","None","Lowest",
+                     "Med-High") 
+Analysis <- data.frame(Cluster_1 = Cluster_1_Table, Cluster_2 = Cluster_2_Table,
+                       Cluster_3 = Cluster_3_Table,Cluster_4_Table,
+                       row.names = c('Calories', 'Protein', 'Fat', 'Sodium', 'Fiber', 'Carbohydrates',
+                                     'Sugars', 'Potassium', 'Rating'))
+print(Analysis)
+```
+
+```{r}
+Cluster_1_Summary <- c("High Protein", "High Sodium", "High Fiber", "High Potassium")
+Cluster_2_Summary <- c("High Calories", "High Fat", "High Sodium", "High Sugars")
+Cluster_3_Summary <- c("High Calories", "Med-High Protein", "High Sodium", "High Carbohydrates")
+Cluster_4_Summary <- c("No Fat", "No Sodium", "No Sugar", "High Carbohydrates") 
+Analysis2 <- data.frame(Cluster_1 = Cluster_1_Summary, Cluster_2 = Cluster_2_Summary,
+                       Cluster_3 = Cluster_3_Summary,Cluster_4 = Cluster_4_Summary
+                       )
+print(Analysis2)
+```
+
++ The following conclusions were obtained based on the averages of each cluster: 
+
++ Cluster 1 = High Protein, High Sodium, High Fiber, High Potassium
++ Cluster 2 = High Calories, High Fat, High Sodium, High Sugars
++ Cluster 3 = High Calories, Med-High Protein, High Sodium, High Carbohydrates
++ Cluster 4 = No Fat, No Sodium, No Sugar, High Carbohydrates
+
+Please also note:
+
++ Clusters 2 & 3 each contain 33 cereals each.
++ Cluster 1 contains 3 cereals and Cluster 4 contains 5 cereals. 
+
++ If consumers are comparing cereals amongst the ones contained in this dataset and desire cereals with high levels of calories, fat, sodium, and sugars (Cluster 2) or cereals with high or med-high levels of calories, protein, sodium, and carbohydrates (Cluster 3), then those consumers have more options since Clusters 2 and 3 each contain 33 cereals. 
+
++ Whereas if consumers are comparing cereals amongst the ones contained in this dataset and desire cereals with high levels of protein, sodium, fiber, and potassium (Cluster 1) or cereals with no fat, no sodium, no sugar, and high carbohydrates (Cluster 4), then those consumers have less options since Cluster 1 only contains 3 cereals total and Cluster 4 only contains 5 cereals total. 
+
+
+Comment on the structure of the clusters and on their stability. Hint: To check stability,
+partition the data and see how well clusters formed based on one part apply to the other
+part. 
+
+***
+Per Dr. Ardakani's instructions, this question is left unanswered. 
+
+***
+
+
+
+The elementary public schools would like to choose a set of cereals to include in their
+daily cafeterias. Every day a different cereal is offered, but all cereals should support a
+healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.”
+Should the data be normalized? If not, how should they be used in the cluster analysis?
+
+
+
+
+Yes, with very few (if any) exceptions, the data should be normalized. "Healthy cereals" can be defined in many ways and nutritional attributes (fiber, sugars, calories, etc.) have many different scales and units. Because clustering is based off of distances between the data points in order to cluster, if the variables are of different scaling or unit measurements, then the largest number (even if not the largest in comparison when scaled) will out-weigh all other attributes.  
+
+Furthermore, hierarchical clustering is very sensitive to outliers and noise. If the data is not normalized, the results run a risk of being misleading and inaccurate.   
+
+Additionally, many clustering methods used to cluster cereals into groups such as "healthy cereals" rely on distance as the way to assign the cereals to a cluster. If the variables are normalized then the each of the variables is given equal weight when assigned to a cluster. However, if the variables are not normalized then the variables are given unequal weight due to the discrepancies in scales and units used to measure nutritional attributes. 
+
+
